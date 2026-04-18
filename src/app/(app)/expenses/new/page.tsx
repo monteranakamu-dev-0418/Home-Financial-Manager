@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import confetti from 'canvas-confetti'
 import { supabase } from '@/lib/supabase'
 import { useUser } from '@/contexts/user-context'
 import { useMode } from '@/contexts/mode-context'
@@ -68,6 +69,23 @@ export default function NewExpensePage() {
       amount: parseInt(amount), payment_method: paymentMethod,
       place: place || null, date, note: note || null,
     })
+    if (isKawaii) {
+      const canvas = document.createElement('canvas')
+      Object.assign(canvas.style, {
+        position: 'fixed', inset: '0', width: '100%', height: '100%',
+        pointerEvents: 'none', zIndex: '99999',
+      })
+      document.body.appendChild(canvas)
+      const fire = confetti.create(canvas, { resize: true, useWorker: false })
+      fire({
+        particleCount: 80,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#f48fb1', '#ce93d8', '#80cbc4', '#fff176', '#f06292'],
+      })
+      await new Promise((r) => setTimeout(r, 800))
+      canvas.remove()
+    }
     router.push('/home')
   }
 
