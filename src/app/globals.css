@@ -191,3 +191,28 @@ html.kawaii .kawaii-bottom-nav {
   background: linear-gradient(180deg, oklch(1 0.01 350) 0%, oklch(0.98 0.02 310) 100%);
   border-top: 2px solid oklch(0.90 0.06 320);
 }
+
+/* フォーム要素の共通スタイル */
+html.kawaii input:not([type="submit"]):not([type="button"]):not([type="checkbox"]),
+html.kawaii select,
+html.kawaii textarea {
+  border-color: #fce4ec !important;
+  font-family: var(--font-zen-maru), sans-serif;
+}
+html.kawaii input:not([type="submit"]):not([type="button"]):not([type="checkbox"]):focus,
+html.kawaii select:focus,
+html.kawaii textarea:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(240, 98, 146, 0.35) !important;
+  border-color: #f48fb1 !important;
+}
+html.kawaii input[type="month"] {
+  color: #c2185b;
+}
+
+/* カードの共通スタイル */
+html.kawaii .kawaii-section {
+  background: linear-gradient(135deg, #fff9fc 0%, #fce4ec 100%);
+  border: 1.5px solid #fce4ec;
+  border-radius: 1.25rem;
+}
