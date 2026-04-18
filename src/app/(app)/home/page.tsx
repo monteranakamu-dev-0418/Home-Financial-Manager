@@ -100,7 +100,7 @@ export default function HomePage() {
       </div>
 
       {/* 残高カード */}
-      <div className="bg-blue-600 rounded-2xl p-5 text-white mb-4">
+      <div className={`${balance < 0 ? 'bg-red-500' : 'bg-blue-600'} rounded-2xl p-5 text-white mb-4`}>
         <p className="text-sm opacity-80 mb-1">今月の残高</p>
         <p className="text-3xl font-bold mb-3">¥{balance.toLocaleString()}</p>
         <div className="flex justify-between text-sm opacity-80">
