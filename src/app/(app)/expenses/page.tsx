@@ -48,7 +48,7 @@ export default function ExpensesPage() {
       .select('*, users(name), categories(name, sort_order)')
       .gte('date', `${filterMonth}-01`)
       .lt('date', nextMonthStart(filterMonth))
-      .is('advance_status', null)
+      .or('advance_status.is.null,advance_status.eq.settled')
 
     if (filterCategory !== 'all') query = query.eq('category_id', filterCategory)
 
@@ -174,6 +174,11 @@ export default function ExpensesPage() {
                   <span className="text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">
                     {expense.payment_method}
                   </span>
+                  {expense.advance_status === 'settled' && (
+                    <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                      立替
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-400">{expense.date}</span>
