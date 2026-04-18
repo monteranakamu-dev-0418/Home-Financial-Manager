@@ -113,9 +113,11 @@ export default function HomePage() {
         <p className="text-3xl font-bold mb-3">¥{balance.toLocaleString()}</p>
         <div className="flex justify-between text-sm opacity-80">
           <span>予算合計 ¥{monthlyBudget.toLocaleString()}</span>
-          <span>
+          <span className="text-right">
             支出合計 ¥{(total + totalAdvance).toLocaleString()}
-            {totalAdvance > 0 && <span className="text-xs ml-1">（立替 ¥{totalAdvance.toLocaleString()}）</span>}
+            {totalAdvance > 0 && (
+              <span className="block text-xs">（立替 ¥{totalAdvance.toLocaleString()}）</span>
+            )}
           </span>
         </div>
       </div>

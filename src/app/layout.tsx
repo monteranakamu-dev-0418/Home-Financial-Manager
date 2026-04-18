@@ -11,6 +11,12 @@ const geistSans = Geist({
 export const metadata: Metadata = {
   title: "家計管理",
   description: "中村・寺本の家計管理アプリ",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "家計管理",
+  },
 };
 
 export default function RootLayout({
