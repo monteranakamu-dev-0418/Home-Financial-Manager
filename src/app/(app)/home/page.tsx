@@ -28,19 +28,32 @@ export default function HomePage() {
   })
   const [total, setTotal] = useState(0)
   const [totalAdvance, setTotalAdvance] = useState(0)
+  const [monthlyBudget, setMonthlyBudget] = useState(0)
+  const [carryOver, setCarryOver] = useState(0)
   const [categorySummaries, setCategorySummaries] = useState<CategorySummary[]>([])
   const [unsettledAdvances, setUnsettledAdvances] = useState<Advance[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
-      const [{ data: expenses }, { data: budgets }, { data: categories }, { data: advances }] =
-        await Promise.all([
-          supabase.from('expenses').select('*').gte('date', `${month}-01`).lt('date', nextMonthStart(month)),
-          supabase.from('budgets').select('*').eq('month', month),
-          supabase.from('categories').select('*').order('sort_order'),
-          supabase.from('advances').select('*, users(*)').eq('settled', false),
-        ])
+      const currentMonthStart = `${month}-01`
+      const [
+        { data: expenses },
+        { data: budgets },
+        { data: categories },
+        { data: advances },
+        { data: pastBudgets },
+        { data: pastExpenses },
+        { data: pastAdvances },
+      ] = await Promise.all([
+        supabase.from('expenses').select('*').gte('date', currentMonthStart).lt('date', nextMonthStart(month)),
+        supabase.from('budgets').select('*').eq('month', month),
+        supabase.from('categories').select('*').order('sort_order'),
+        supabase.from('advances').select('*, users(*)').eq('settled', false),
+        supabase.from('budgets').select('*').lt('month', month),
+        supabase.from('expenses').select('amount').lt('date', currentMonthStart),
+        supabase.from('advances').select('amount').lt('date', currentMonthStart),
+      ])
 
       const expenseList: Expense[] = expenses ?? []
       const advanceList: Advance[] = advances ?? []
@@ -51,6 +64,14 @@ export default function HomePage() {
       const monthAdvances = advanceList.filter((a) => a.date.startsWith(month))
       const monthAdvanceTotal = monthAdvances.reduce((s, a) => s + a.amount, 0)
       setTotalAdvance(monthAdvanceTotal)
+
+      const thisMonthBudget = (budgets ?? []).reduce((s, b) => s + b.amount, 0)
+      setMonthlyBudget(thisMonthBudget)
+
+      const pastBudgetTotal = (pastBudgets ?? []).reduce((s, b) => s + b.amount, 0)
+      const pastExpenseTotal = (pastExpenses ?? []).reduce((s, e) => s + e.amount, 0)
+      const pastAdvanceTotal = (pastAdvances ?? []).reduce((s, a) => s + a.amount, 0)
+      setCarryOver(pastBudgetTotal - pastExpenseTotal - pastAdvanceTotal)
 
       const summaries: CategorySummary[] = (categories ?? []).map((cat) => {
         const spent = expenseList.filter((e) => e.category_id === cat.id).reduce((s, e) => s + e.amount, 0)
@@ -65,10 +86,7 @@ export default function HomePage() {
     load()
   }, [month])
 
-  const monthlyContribution = typeof window !== 'undefined'
-    ? parseInt(localStorage.getItem('monthly_contribution') ?? '300000')
-    : 300000
-  const balance = monthlyContribution - total - totalAdvance
+  const balance = monthlyBudget - total - totalAdvance
   const monthLabel = `${parseInt(month.split('-')[1])}月`
 
   return (
@@ -86,7 +104,7 @@ export default function HomePage() {
         <p className="text-sm opacity-80 mb-1">今月の残高</p>
         <p className="text-3xl font-bold mb-3">¥{balance.toLocaleString()}</p>
         <div className="flex justify-between text-sm opacity-80">
-          <span>拠出合計 ¥{monthlyContribution.toLocaleString()}</span>
+          <span>予算合計 ¥{monthlyBudget.toLocaleString()}</span>
           <span>
             支出合計 ¥{(total + totalAdvance).toLocaleString()}
             {totalAdvance > 0 && <span className="text-xs ml-1">（立替 ¥{totalAdvance.toLocaleString()}）</span>}
@@ -94,16 +112,22 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* 先月までの資産合計 */}
+      <div className="bg-white rounded-2xl px-5 py-4 mb-4 flex justify-between items-center">
+        <div>
+          <p className="text-xs text-gray-400 mb-0.5">先月までの資産合計</p>
+          <p className={`text-xl font-bold ${carryOver >= 0 ? 'text-gray-800' : 'text-red-500'}`}>
+            ¥{carryOver.toLocaleString()}
+          </p>
+        </div>
+        <span className="text-2xl">🏦</span>
+      </div>
+
       {/* 立替アラート */}
       {unsettledAdvances.length > 0 && (
-        <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 mb-4">
-          <p className="text-sm font-medium text-orange-700 mb-1">⚠ 未精算の立替があります</p>
-          {unsettledAdvances.map((a) => (
-            <p key={a.id} className="text-xs text-orange-600">
-              {(a.users as { name: string } | undefined)?.name} が ¥{a.amount.toLocaleString()} 立替中（{a.description}）
-            </p>
-          ))}
-        </div>
+        <Link href="/advances" className="block bg-orange-50 border border-orange-200 rounded-xl p-3 mb-4">
+          <p className="text-sm font-medium text-orange-700">⚠ 未精算の立替があります</p>
+        </Link>
       )}
 
       {/* カテゴリ別進捗 */}

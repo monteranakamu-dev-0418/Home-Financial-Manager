@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { BudgetBar } from '@/components/budget-bar'
-import type { Category, Expense, Advance } from '@/types'
+import type { Category, Expense } from '@/types'
 
 type CategorySummary = {
   category: Category
@@ -24,9 +24,9 @@ export default function SummaryPage() {
   const [totalAdvance, setTotalAdvance] = useState(0)
   const [overallAvg, setOverallAvg] = useState(0)
   const [categorySummaries, setCategorySummaries] = useState<CategorySummary[]>([])
-  const [unsettledAdvances, setUnsettledAdvances] = useState<Advance[]>([])
+  const [unsettledCount, setUnsettledCount] = useState(0)
+  const [unsettledTotal, setUnsettledTotal] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [refreshKey, setRefreshKey] = useState(0)
 
   const load = useCallback(async () => {
       setLoading(true)
@@ -36,11 +36,11 @@ export default function SummaryPage() {
           supabase.from('expenses').select('*').order('date'),
           supabase.from('budgets').select('*').eq('month', month),
           supabase.from('categories').select('*').order('sort_order'),
-          supabase.from('advances').select('*, users(name)').eq('settled', false),
+          supabase.from('advances').select('amount, date, category_id').eq('settled', false),
         ])
 
       const expenses: Expense[] = allExpenses ?? []
-      const advanceList: Advance[] = advances ?? []
+      const advanceList = advances ?? []
 
       // 月カウント（平均計算用）
       const allMonths = [...new Set(expenses.map((e) => e.date.slice(0, 7)))].sort()
@@ -87,38 +87,17 @@ export default function SummaryPage() {
         }
       })
       setCategorySummaries(summaries)
-      setUnsettledAdvances(advanceList)
+      setUnsettledCount(advanceList.length)
+      setUnsettledTotal(advanceList.reduce((s, a) => s + a.amount, 0))
       setLoading(false)
   }, [month])
 
   useEffect(() => {
     load()
-  }, [load, refreshKey])
+  }, [load])
 
-  const handleSettle = async (advance: Advance) => {
-    // 立替→支払：支出レコードを作成して立替を精算済にする
-    await Promise.all([
-      supabase.from('expenses').insert({
-        user_id: advance.payer_id,
-        category_id: advance.category_id,
-        amount: advance.amount,
-        payment_method: advance.payment_method ?? '現金',
-        place: advance.place,
-        date: advance.date,
-        note: `立替精算: ${advance.description}`,
-      }),
-      supabase
-        .from('advances')
-        .update({ settled: true, settled_at: new Date().toISOString() })
-        .eq('id', advance.id),
-    ])
-    setRefreshKey((k) => k + 1)
-  }
-
-  const monthlyContribution = typeof window !== 'undefined'
-    ? parseInt(localStorage.getItem('monthly_contribution') ?? '300000')
-    : 300000
-  const balance = monthlyContribution - total - totalAdvance
+  const monthlyBudget = categorySummaries.reduce((s, c) => s + (c.budget ?? 0), 0)
+  const balance = monthlyBudget - total - totalAdvance
 
   return (
     <div className="px-4 pt-6 pb-4">
@@ -147,48 +126,23 @@ export default function SummaryPage() {
             </p>
           </div>
           <div>
-            <p className="opacity-70">月平均支出</p>
-            <p className="font-semibold">¥{overallAvg.toLocaleString()}</p>
+            <p className="opacity-70">予算合計</p>
+            <p className="font-semibold">¥{monthlyBudget.toLocaleString()}</p>
           </div>
         </div>
       </div>
 
-      {/* 未精算の立替 */}
-      {unsettledAdvances.length > 0 && (
-        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-4">
-          <h2 className="text-sm font-semibold text-orange-700 mb-2">⚠ 未精算の立替</h2>
-          <div className="flex flex-col gap-2">
-            {unsettledAdvances.map((a) => (
-              <div key={a.id} className="flex justify-between items-center gap-2">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-orange-700 font-medium">
-                    {(a.users as { name: string } | undefined)?.name}
-                  </p>
-                  <p className="text-xs text-orange-500 truncate">{a.description}（{a.date}）</p>
-                </div>
-                <span className="text-sm font-semibold text-orange-700 shrink-0">
-                  ¥{a.amount.toLocaleString()}
-                </span>
-                <Link
-                  href={`/advances/${a.id}`}
-                  className="shrink-0 text-xs text-blue-500 border border-blue-200 px-2 py-1.5 rounded-lg font-medium whitespace-nowrap"
-                >
-                  修正
-                </Link>
-                <button
-                  onClick={() => handleSettle(a)}
-                  className="shrink-0 bg-orange-500 text-white text-xs px-3 py-1.5 rounded-lg font-medium active:scale-95 transition-transform whitespace-nowrap"
-                >
-                  精算
-                </button>
-              </div>
-            ))}
-            <div className="border-t border-orange-200 mt-1 pt-2 flex justify-between text-sm font-bold text-orange-700">
-              <span>合計立替額</span>
-              <span>¥{unsettledAdvances.reduce((s, a) => s + a.amount, 0).toLocaleString()}</span>
+      {/* 未精算の立替サマリー */}
+      {unsettledCount > 0 && (
+        <Link href="/advances" className="block bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 mb-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="text-sm font-semibold text-orange-700">⚠ 未精算の立替</p>
+              <p className="text-xs text-orange-500 mt-0.5">{unsettledCount}件</p>
             </div>
+            <p className="text-lg font-bold text-orange-700">¥{unsettledTotal.toLocaleString()}</p>
           </div>
-        </div>
+        </Link>
       )}
 
       {/* カテゴリ別内訳 */}

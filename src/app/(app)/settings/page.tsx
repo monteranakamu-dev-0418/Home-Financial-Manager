@@ -20,13 +20,7 @@ export default function SettingsPage() {
   const [budgets, setBudgets] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-
-  const [contribution, setContribution] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('monthly_contribution') ?? '300000'
-    }
-    return '300000'
-  })
+  const [copying, setCopying] = useState(false)
 
   const [newCategoryName, setNewCategoryName] = useState('')
   const [addingCategory, setAddingCategory] = useState(false)
@@ -51,6 +45,25 @@ export default function SettingsPage() {
         setBudgets(map)
       })
   }, [month])
+
+  const handleCopyPrevMonth = async () => {
+    setCopying(true)
+    const [y, m] = month.split('-').map(Number)
+    const prev = new Date(y, m - 2, 1)
+    const prevMonth = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`
+    const { data } = await supabase.from('budgets').select('*').eq('month', prevMonth)
+    if (data && data.length > 0) {
+      for (const b of data) {
+        await supabase
+          .from('budgets')
+          .upsert({ category_id: b.category_id, amount: b.amount, month }, { onConflict: 'category_id,month' })
+      }
+      const map: Record<string, string> = {}
+      for (const b of data) map[b.category_id] = String(b.amount)
+      setBudgets(map)
+    }
+    setCopying(false)
+  }
 
   const handleSaveBudgets = async () => {
     setSaving(true)
@@ -101,29 +114,6 @@ export default function SettingsPage() {
     <div className="px-4 pt-6 pb-4">
       <h1 className="text-xl font-bold text-gray-800 mb-6">設定</h1>
 
-      {/* 月次拠出設定 */}
-      <section className="bg-white rounded-2xl p-4 mb-4">
-        <h2 className="text-sm font-semibold text-gray-700 mb-3">月次拠出合計</h2>
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">¥</span>
-            <input
-              type="number"
-              inputMode="numeric"
-              step={1000}
-              min={0}
-              value={contribution}
-              onChange={(e) => {
-                setContribution(e.target.value)
-                localStorage.setItem('monthly_contribution', e.target.value)
-              }}
-              className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <span className="text-xs text-gray-400 shrink-0">2人合計</span>
-        </div>
-      </section>
-
       {/* 予算設定 */}
       <section className="bg-white rounded-2xl p-4 mb-4">
         <div className="flex justify-between items-center mb-3">
@@ -159,13 +149,22 @@ export default function SettingsPage() {
           ))}
         </div>
 
-        <button
-          onClick={handleSaveBudgets}
-          disabled={saving}
-          className="w-full bg-blue-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-50 active:scale-95 transition-transform"
-        >
-          {saved ? '✓ 保存しました' : saving ? '保存中...' : '予算を保存'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleCopyPrevMonth}
+            disabled={copying}
+            className="flex-1 border border-gray-200 text-gray-600 py-3 rounded-xl text-sm font-medium disabled:opacity-50 active:scale-95 transition-transform"
+          >
+            {copying ? 'コピー中...' : '先月からコピー'}
+          </button>
+          <button
+            onClick={handleSaveBudgets}
+            disabled={saving}
+            className="flex-1 bg-blue-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-50 active:scale-95 transition-transform"
+          >
+            {saved ? '✓ 保存' : saving ? '保存中...' : '保存する'}
+          </button>
+        </div>
       </section>
 
       {/* カテゴリ管理 */}
