@@ -130,9 +130,25 @@ export default function HomePage() {
         </Link>
       )}
 
+      {/* アクションボタン */}
+      <div className="flex gap-3 mb-4">
+        <Link
+          href="/expenses/new"
+          className="flex-1 bg-blue-600 text-white text-center py-4 rounded-2xl font-semibold text-sm active:scale-95 transition-transform"
+        >
+          ＋ 支出を入力
+        </Link>
+        <Link
+          href="/advances/new"
+          className="flex-1 bg-white border-2 border-gray-200 text-gray-700 text-center py-4 rounded-2xl font-semibold text-sm active:scale-95 transition-transform"
+        >
+          立替を入力
+        </Link>
+      </div>
+
       {/* カテゴリ別進捗 */}
       {!loading && (
-        <div className="bg-white rounded-2xl p-4 mb-6">
+        <div className="bg-white rounded-2xl p-4 mb-4">
           <h2 className="text-sm font-semibold text-gray-600 mb-3">カテゴリ別</h2>
           <div className="flex flex-col gap-3">
             {categorySummaries.map(({ category, spent, advance, budget }) => {
@@ -158,22 +174,6 @@ export default function HomePage() {
           </div>
         </div>
       )}
-
-      {/* アクションボタン */}
-      <div className="flex gap-3">
-        <Link
-          href="/expenses/new"
-          className="flex-1 bg-blue-600 text-white text-center py-4 rounded-2xl font-semibold text-sm active:scale-95 transition-transform"
-        >
-          ＋ 支出を入力
-        </Link>
-        <Link
-          href="/advances/new"
-          className="flex-1 bg-white border-2 border-gray-200 text-gray-700 text-center py-4 rounded-2xl font-semibold text-sm active:scale-95 transition-transform"
-        >
-          立替を入力
-        </Link>
-      </div>
     </div>
   )
 }
