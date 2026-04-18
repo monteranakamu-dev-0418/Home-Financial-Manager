@@ -52,24 +52,15 @@ export default function AdvancesPage() {
     await supabase.from('expenses')
       .update({ advance_status: 'settled', settled_at: new Date().toISOString() })
       .eq('id', settleTarget.id)
-    if (isKawaii) {
-      const canvas = document.createElement('canvas')
-      Object.assign(canvas.style, {
-        position: 'fixed', inset: '0', width: '100%', height: '100%',
-        pointerEvents: 'none', zIndex: '99999',
-      })
-      document.body.appendChild(canvas)
-      const fire = confetti.create(canvas, { resize: true, useWorker: false })
-      fire({
-        particleCount: 100,
-        spread: 80,
-        origin: { y: 0.5 },
-        colors: ['#f48fb1', '#ce93d8', '#80cbc4', '#fff176', '#f06292'],
-      })
-      await new Promise((r) => setTimeout(r, 1200))
-      canvas.remove()
-    }
     setSettleTarget(null)
+    if (isKawaii) {
+      setTimeout(() => confetti({
+        particleCount: 120,
+        spread: 90,
+        origin: { y: 0.6 },
+        colors: ['#f48fb1', '#ce93d8', '#80cbc4', '#fff176', '#f06292'],
+      }), 50)
+    }
     await loadUnsettled()
   }
 
