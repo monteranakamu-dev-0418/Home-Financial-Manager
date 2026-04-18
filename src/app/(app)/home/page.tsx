@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useUser } from '@/contexts/user-context'
 import { supabase } from '@/lib/supabase'
 import { BudgetBar } from '@/components/budget-bar'
-import type { Expense, Category, Advance } from '@/types'
+import type { Expense, Category } from '@/types'
 
 type CategorySummary = {
   category: Category
@@ -16,7 +16,7 @@ type CategorySummary = {
 
 function nextMonthStart(month: string): string {
   const [y, m] = month.split('-').map(Number)
-  const d = new Date(y, m, 1) // m は 1始まりなので new Date(y, m, 1) = 翌月1日
+  const d = new Date(y, m, 1)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
 }
 
@@ -31,56 +31,64 @@ export default function HomePage() {
   const [monthlyBudget, setMonthlyBudget] = useState(0)
   const [carryOver, setCarryOver] = useState(0)
   const [categorySummaries, setCategorySummaries] = useState<CategorySummary[]>([])
-  const [unsettledAdvances, setUnsettledAdvances] = useState<Advance[]>([])
+  const [unsettledAdvances, setUnsettledAdvances] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
       const currentMonthStart = `${month}-01`
+      const monthEnd = nextMonthStart(month)
+
       const [
-        { data: expenses },
+        { data: monthExpenses },
         { data: budgets },
         { data: categories },
-        { data: advances },
+        { data: allUnsettled },
         { data: pastBudgets },
         { data: pastExpenses },
-        { data: pastAdvances },
       ] = await Promise.all([
-        supabase.from('expenses').select('*').gte('date', currentMonthStart).lt('date', nextMonthStart(month)),
+        // 今月の通常支出＋精算済立替
+        supabase.from('expenses').select('*')
+          .gte('date', currentMonthStart)
+          .lt('date', monthEnd)
+          .or('advance_status.is.null,advance_status.eq.settled'),
         supabase.from('budgets').select('*').eq('month', month),
         supabase.from('categories').select('*').order('sort_order'),
-        supabase.from('advances').select('*, users(*)').eq('settled', false),
+        // 全期間の未精算立替（ホームのアラート用）
+        supabase.from('expenses').select('*, users(*)')
+          .eq('advance_status', 'unsettled'),
         supabase.from('budgets').select('*').lt('month', month),
+        // 先月以前の全支出（通常＋立替すべて）
         supabase.from('expenses').select('amount').lt('date', currentMonthStart),
-        supabase.from('advances').select('amount').lt('date', currentMonthStart),
       ])
 
-      const expenseList: Expense[] = expenses ?? []
-      const advanceList: Advance[] = advances ?? []
+      const expenseList: Expense[] = monthExpenses ?? []
+      const unsettledList: Expense[] = allUnsettled ?? []
 
       const monthTotal = expenseList.reduce((s, e) => s + e.amount, 0)
       setTotal(monthTotal)
 
-      const monthAdvances = advanceList.filter((a) => a.date.startsWith(month))
-      const monthAdvanceTotal = monthAdvances.reduce((s, a) => s + a.amount, 0)
+      // 今月の未精算立替（ホームの表示用）
+      const monthUnsettled = unsettledList.filter((a) => a.date.startsWith(month))
+      const monthAdvanceTotal = monthUnsettled.reduce((s, a) => s + a.amount, 0)
       setTotalAdvance(monthAdvanceTotal)
 
       const thisMonthBudget = (budgets ?? []).reduce((s, b) => s + b.amount, 0)
       setMonthlyBudget(thisMonthBudget)
 
+      // 先月以前の資産合計 = 過去の予算合計 - 過去の全支出（通常＋立替）
       const pastBudgetTotal = (pastBudgets ?? []).reduce((s, b) => s + b.amount, 0)
       const pastExpenseTotal = (pastExpenses ?? []).reduce((s, e) => s + e.amount, 0)
-      const pastAdvanceTotal = (pastAdvances ?? []).reduce((s, a) => s + a.amount, 0)
-      setCarryOver(pastBudgetTotal - pastExpenseTotal - pastAdvanceTotal)
+      setCarryOver(pastBudgetTotal - pastExpenseTotal)
 
       const summaries: CategorySummary[] = (categories ?? []).map((cat) => {
         const spent = expenseList.filter((e) => e.category_id === cat.id).reduce((s, e) => s + e.amount, 0)
-        const advance = monthAdvances.filter((a) => a.category_id === cat.id).reduce((s, a) => s + a.amount, 0)
+        const advance = monthUnsettled.filter((a) => a.category_id === cat.id).reduce((s, a) => s + a.amount, 0)
         const budget = (budgets ?? []).find((b) => b.category_id === cat.id)?.amount ?? null
         return { category: cat, spent, advance, budget }
       })
       setCategorySummaries(summaries)
-      setUnsettledAdvances(advanceList)
+      setUnsettledAdvances(unsettledList)
       setLoading(false)
     }
     load()

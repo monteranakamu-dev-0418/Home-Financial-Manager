@@ -13,6 +13,8 @@ export type Category = {
 
 export type PaymentMethod = '現金' | 'PayPay' | 'カード'
 
+export type AdvanceStatus = 'unsettled' | 'settled' | null
+
 export type Expense = {
   id: string
   user_id: string
@@ -22,6 +24,8 @@ export type Expense = {
   place: string | null
   date: string
   note: string | null
+  advance_status: AdvanceStatus
+  settled_at: string | null
   created_at: string
   users?: User
   categories?: Category
@@ -42,20 +46,4 @@ export type Contribution = {
   amount: number
   month: string
   created_at: string
-}
-
-export type Advance = {
-  id: string
-  payer_id: string
-  amount: number
-  description: string
-  date: string
-  settled: boolean
-  settled_at: string | null
-  created_at: string
-  category_id: string | null
-  payment_method: PaymentMethod | null
-  place: string | null
-  users?: User
-  categories?: Category
 }

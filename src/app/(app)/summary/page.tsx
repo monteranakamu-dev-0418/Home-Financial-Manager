@@ -38,22 +38,28 @@ export default function SummaryPage() {
     const monthStart = `${month}-01`
     const monthEnd = nextMonthStart(month)
 
-    const [{ data: expenses }, { data: budgets }, { data: categories }, { data: advances }] =
+    const [{ data: monthExpenses }, { data: budgets }, { data: categories }, { data: allUnsettled }] =
       await Promise.all([
-        supabase.from('expenses').select('*').gte('date', monthStart).lt('date', monthEnd),
+        // 今月の通常支出＋精算済立替
+        supabase.from('expenses').select('*')
+          .gte('date', monthStart)
+          .lt('date', monthEnd)
+          .or('advance_status.is.null,advance_status.eq.settled'),
         supabase.from('budgets').select('*').eq('month', month),
         supabase.from('categories').select('*').order('sort_order'),
-        supabase.from('advances').select('amount, date, category_id').eq('settled', false),
+        // 全未精算立替（集計ページのアラート用）
+        supabase.from('expenses').select('amount, date, category_id')
+          .eq('advance_status', 'unsettled'),
       ])
 
-    const expenseList: Expense[] = expenses ?? []
-    const advanceList = advances ?? []
+    const expenseList: Expense[] = monthExpenses ?? []
+    const unsettledList = allUnsettled ?? []
 
     const monthTotal = expenseList.reduce((s, e) => s + e.amount, 0)
     setTotal(monthTotal)
 
-    const monthAdvances = advanceList.filter((a) => a.date.startsWith(month))
-    const monthAdvanceTotal = monthAdvances.reduce((s, a) => s + a.amount, 0)
+    const monthUnsettled = unsettledList.filter((a) => a.date.startsWith(month))
+    const monthAdvanceTotal = monthUnsettled.reduce((s, a) => s + a.amount, 0)
     setTotalAdvance(monthAdvanceTotal)
 
     const summaries: CategorySummary[] = (categories ?? []).map((cat) => {
@@ -61,7 +67,7 @@ export default function SummaryPage() {
         .filter((e) => e.category_id === cat.id)
         .reduce((s, e) => s + e.amount, 0)
 
-      const catAdvance = monthAdvances
+      const catAdvance = monthUnsettled
         .filter((a) => a.category_id === cat.id)
         .reduce((s, a) => s + a.amount, 0)
 
@@ -70,8 +76,8 @@ export default function SummaryPage() {
       return { category: cat, spent: catSpent, advance: catAdvance, budget }
     })
     setCategorySummaries(summaries)
-    setUnsettledCount(advanceList.length)
-    setUnsettledTotal(advanceList.reduce((s, a) => s + a.amount, 0))
+    setUnsettledCount(unsettledList.length)
+    setUnsettledTotal(unsettledList.reduce((s, a) => s + a.amount, 0))
     setLoading(false)
   }, [month])
 

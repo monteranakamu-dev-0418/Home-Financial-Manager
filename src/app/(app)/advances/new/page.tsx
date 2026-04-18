@@ -18,13 +18,13 @@ export default function NewAdvancePage() {
   const [placeSuggestions, setPlaceSuggestions] = useState<string[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
 
-  const [payerId, setPayerId] = useState('')
+  const [userId, setUserId] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [amount, setAmount] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('現金')
   const [place, setPlace] = useState('')
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0])
-  const [description, setDescription] = useState('')
+  const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -34,7 +34,7 @@ export default function NewAdvancePage() {
     ]).then(([{ data: usersData }, { data: catsData }]) => {
       if (usersData) {
         setUsers(usersData)
-        setPayerId(currentUser?.id ?? usersData[0]?.id ?? '')
+        setUserId(currentUser?.id ?? usersData[0]?.id ?? '')
       }
       if (catsData) {
         setCategories(catsData)
@@ -59,18 +59,18 @@ export default function NewAdvancePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!payerId || !categoryId || !amount || !description) return
+    if (!userId || !categoryId || !amount || !note) return
     setSubmitting(true)
 
-    await supabase.from('advances').insert({
-      payer_id: payerId,
+    await supabase.from('expenses').insert({
+      user_id: userId,
       category_id: categoryId,
       amount: parseInt(amount),
       payment_method: paymentMethod,
       place: place || null,
       date,
-      description,
-      settled: false,
+      note,
+      advance_status: 'unsettled',
     })
 
     router.push('/home')
@@ -92,9 +92,9 @@ export default function NewAdvancePage() {
               <button
                 key={u.id}
                 type="button"
-                onClick={() => setPayerId(u.id)}
+                onClick={() => setUserId(u.id)}
                 className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-colors ${
-                  payerId === u.id
+                  userId === u.id
                     ? 'bg-blue-600 text-white'
                     : 'bg-white border border-gray-200 text-gray-700'
                 }`}
@@ -191,13 +191,13 @@ export default function NewAdvancePage() {
           />
         </div>
 
-        {/* 内容（メモ） */}
+        {/* 内容 */}
         <div>
           <label className="block text-sm font-medium text-gray-600 mb-2">内容</label>
           <input
             type="text"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
             placeholder="例：スーパーでの食料品"
             required
             className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -206,7 +206,7 @@ export default function NewAdvancePage() {
 
         <button
           type="submit"
-          disabled={submitting || !amount || !categoryId || !description}
+          disabled={submitting || !amount || !categoryId || !note}
           className="w-full bg-blue-600 text-white py-4 rounded-2xl font-semibold text-base disabled:opacity-50 active:scale-95 transition-transform mt-2"
         >
           {submitting ? '保存中...' : '保存する'}

@@ -19,31 +19,31 @@ export default function EditAdvancePage() {
   const [loading, setLoading] = useState(true)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
 
-  const [payerId, setPayerId] = useState('')
+  const [userId, setUserId] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [amount, setAmount] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('現金')
   const [place, setPlace] = useState('')
   const [date, setDate] = useState('')
-  const [description, setDescription] = useState('')
+  const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     Promise.all([
       supabase.from('users').select('*').order('created_at'),
       supabase.from('categories').select('*').order('sort_order'),
-      supabase.from('advances').select('*').eq('id', id).single(),
-    ]).then(([{ data: usersData }, { data: cats }, { data: advance }]) => {
+      supabase.from('expenses').select('*').eq('id', id).single(),
+    ]).then(([{ data: usersData }, { data: cats }, { data: expense }]) => {
       if (usersData) setUsers(usersData)
       if (cats) setCategories(cats)
-      if (advance) {
-        setPayerId(advance.payer_id)
-        setCategoryId(advance.category_id)
-        setAmount(String(advance.amount))
-        setPaymentMethod((advance.payment_method ?? '現金') as PaymentMethod)
-        setPlace(advance.place ?? '')
-        setDate(advance.date)
-        setDescription(advance.description ?? '')
+      if (expense) {
+        setUserId(expense.user_id)
+        setCategoryId(expense.category_id)
+        setAmount(String(expense.amount))
+        setPaymentMethod((expense.payment_method ?? '現金') as PaymentMethod)
+        setPlace(expense.place ?? '')
+        setDate(expense.date)
+        setNote(expense.note ?? '')
       }
       setLoading(false)
     })
@@ -65,25 +65,25 @@ export default function EditAdvancePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!payerId || !categoryId || !amount || !description) return
+    if (!userId || !categoryId || !amount || !note) return
     setSubmitting(true)
 
-    await supabase.from('advances').update({
-      payer_id: payerId,
+    await supabase.from('expenses').update({
+      user_id: userId,
       category_id: categoryId,
       amount: parseInt(amount),
       payment_method: paymentMethod,
       place: place || null,
       date,
-      description,
+      note,
     }).eq('id', id)
 
-    router.push('/summary')
+    router.push('/advances')
   }
 
   const handleDelete = async () => {
-    await supabase.from('advances').delete().eq('id', id)
-    router.push('/summary')
+    await supabase.from('expenses').delete().eq('id', id)
+    router.push('/advances')
   }
 
   if (loading) return <div className="text-center text-gray-400 py-20">読み込み中...</div>
@@ -104,9 +104,9 @@ export default function EditAdvancePage() {
               <button
                 key={u.id}
                 type="button"
-                onClick={() => setPayerId(u.id)}
+                onClick={() => setUserId(u.id)}
                 className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-colors ${
-                  payerId === u.id
+                  userId === u.id
                     ? 'bg-blue-600 text-white'
                     : 'bg-white border border-gray-200 text-gray-700'
                 }`}
@@ -208,8 +208,8 @@ export default function EditAdvancePage() {
           <label className="block text-sm font-medium text-gray-600 mb-2">内容</label>
           <input
             type="text"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
             placeholder="例：スーパーでの食料品"
             required
             className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -218,7 +218,7 @@ export default function EditAdvancePage() {
 
         <button
           type="submit"
-          disabled={submitting || !amount || !categoryId || !description}
+          disabled={submitting || !amount || !categoryId || !note}
           className="w-full bg-blue-600 text-white py-4 rounded-2xl font-semibold text-base disabled:opacity-50 active:scale-95 transition-transform mt-2"
         >
           {submitting ? '保存中...' : '保存する'}

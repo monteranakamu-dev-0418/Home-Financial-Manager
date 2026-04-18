@@ -48,6 +48,7 @@ export default function ExpensesPage() {
       .select('*, users(name), categories(name, sort_order)')
       .gte('date', `${filterMonth}-01`)
       .lt('date', nextMonthStart(filterMonth))
+      .is('advance_status', null)
 
     if (filterCategory !== 'all') query = query.eq('category_id', filterCategory)
 

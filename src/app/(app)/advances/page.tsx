@@ -3,38 +3,38 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import type { Advance } from '@/types'
+import type { Expense } from '@/types'
 
 type Tab = 'unsettled' | 'settled'
 
 export default function AdvancesPage() {
   const [tab, setTab] = useState<Tab>('unsettled')
-  const [unsettled, setUnsettled] = useState<Advance[]>([])
-  const [settled, setSettled] = useState<Advance[]>([])
+  const [unsettled, setUnsettled] = useState<Expense[]>([])
+  const [settled, setSettled] = useState<Expense[]>([])
   const [loadingUnsettled, setLoadingUnsettled] = useState(true)
   const [loadingSettled, setLoadingSettled] = useState(false)
-  const [settleTarget, setSettleTarget] = useState<Advance | null>(null)
+  const [settleTarget, setSettleTarget] = useState<Expense | null>(null)
 
   const loadUnsettled = async () => {
     setLoadingUnsettled(true)
     const { data } = await supabase
-      .from('advances')
+      .from('expenses')
       .select('*, users(name)')
-      .eq('settled', false)
+      .eq('advance_status', 'unsettled')
       .order('date', { ascending: false })
-    setUnsettled((data as Advance[]) ?? [])
+    setUnsettled((data as Expense[]) ?? [])
     setLoadingUnsettled(false)
   }
 
   const loadSettled = async () => {
     setLoadingSettled(true)
     const { data } = await supabase
-      .from('advances')
+      .from('expenses')
       .select('*, users(name)')
-      .eq('settled', true)
+      .eq('advance_status', 'settled')
       .order('settled_at', { ascending: false })
       .limit(50)
-    setSettled((data as Advance[]) ?? [])
+    setSettled((data as Expense[]) ?? [])
     setLoadingSettled(false)
   }
 
@@ -47,21 +47,10 @@ export default function AdvancesPage() {
 
   const handleSettle = async () => {
     if (!settleTarget) return
-    await Promise.all([
-      supabase.from('expenses').insert({
-        user_id: settleTarget.payer_id,
-        category_id: settleTarget.category_id,
-        amount: settleTarget.amount,
-        payment_method: settleTarget.payment_method ?? '現金',
-        place: settleTarget.place,
-        date: settleTarget.date,
-        note: `立替精算: ${settleTarget.description}`,
-      }),
-      supabase
-        .from('advances')
-        .update({ settled: true, settled_at: new Date().toISOString() })
-        .eq('id', settleTarget.id),
-    ])
+    await supabase
+      .from('expenses')
+      .update({ advance_status: 'settled', settled_at: new Date().toISOString() })
+      .eq('id', settleTarget.id)
     setSettleTarget(null)
     await loadUnsettled()
   }
@@ -127,7 +116,7 @@ export default function AdvancesPage() {
                   <p className="text-sm font-semibold text-gray-800">
                     {(a.users as { name: string } | undefined)?.name}
                   </p>
-                  <p className="text-xs text-gray-400 mt-0.5">{a.date}　{a.description}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{a.date}　{a.note}</p>
                   {tab === 'settled' && a.settled_at && (
                     <p className="text-xs text-green-500 mt-0.5">
                       精算日: {a.settled_at.slice(0, 10)}
@@ -176,12 +165,12 @@ export default function AdvancesPage() {
             <p className="text-sm text-gray-500 mb-1">
               {(settleTarget.users as { name: string } | undefined)?.name}　{settleTarget.date}
             </p>
-            <p className="text-sm text-gray-700 mb-1 font-medium">{settleTarget.description}</p>
+            <p className="text-sm text-gray-700 mb-1 font-medium">{settleTarget.note}</p>
             <p className="text-xl font-bold text-orange-500 mb-4">
               ¥{settleTarget.amount.toLocaleString()}
             </p>
             <p className="text-xs text-gray-400 mb-6">
-              精算すると支出として記録されます。
+              精算済みに移動します。支出の二重登録は起きません。
             </p>
             <div className="flex gap-3">
               <button
