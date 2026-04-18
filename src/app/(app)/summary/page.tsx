@@ -185,7 +185,7 @@ export default function SummaryPage() {
                 <div key={category.id}>
                   <div className="grid grid-cols-3 text-sm items-center mb-1 px-1">
                     <span className="font-medium col-span-1" style={{ color: isKawaii ? '#880e4f' : '#1f2937' }}>
-                      {category.name}
+                      {category.icon && <span className="mr-1">{category.icon}</span>}{category.name}
                     </span>
                     <div className="text-right">
                       <span className="font-semibold" style={{ color: over ? '#b71c1c' : (isKawaii ? '#c2185b' : '#1f2937') }}>

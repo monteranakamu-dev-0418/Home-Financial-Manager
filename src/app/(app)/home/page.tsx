@@ -163,7 +163,7 @@ export default function HomePage() {
                   <div key={category.id}>
                     <div className="flex justify-between text-xs mb-1">
                       <span className="font-medium text-gray-800">
-                        {category.name} {over && <span className="text-red-500">⚠超過</span>}
+                        {category.icon && <span className="mr-1">{category.icon}</span>}{category.name} {over && <span className="text-red-500">⚠超過</span>}
                       </span>
                       <span className={over ? 'text-red-500' : 'text-gray-500'}>
                         ¥{combinedTotal.toLocaleString()}{budget !== null ? ` / ¥${budget.toLocaleString()}` : ''}
@@ -307,7 +307,7 @@ export default function HomePage() {
                 <div key={category.id}>
                   <div className="flex justify-between text-xs mb-1">
                     <span className="font-bold" style={{ color: over ? '#b71c1c' : '#880e4f' }}>
-                      {category.name} {over && <span>🚨超過！</span>}
+                      {category.icon && <span className="mr-1">{category.icon}</span>}{category.name} {over && <span>🚨超過！</span>}
                     </span>
                     <span style={{ color: over ? '#c62828' : '#ad1457' }}>
                       ¥{combinedTotal.toLocaleString()}{budget !== null ? ` / ¥${budget.toLocaleString()}` : ''}

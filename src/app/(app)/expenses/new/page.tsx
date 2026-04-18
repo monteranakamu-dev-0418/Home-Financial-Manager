@@ -128,7 +128,7 @@ export default function NewExpensePage() {
               <button key={cat.id} type="button" onClick={() => setCategoryId(cat.id)}
                 className={K.selBtnClass(categoryId === cat.id)}
                 style={{ ...K.selBtn(categoryId === cat.id), width: '100%' }}>
-                {cat.name}
+                {cat.icon && <span className="mr-1">{cat.icon}</span>}{cat.name}
               </button>
             ))}
           </div>

@@ -12,16 +12,17 @@ CREATE TABLE categories (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name       text NOT NULL,
   sort_order int  NOT NULL DEFAULT 0,
+  icon       text DEFAULT '📦',
   created_at timestamptz DEFAULT now()
 );
 
-INSERT INTO categories (name, sort_order) VALUES
-  ('家賃',   1),
-  ('光熱費', 2),
-  ('水道代', 3),
-  ('食費',   4),
-  ('交際費', 5),
-  ('貯金',   6);
+INSERT INTO categories (name, sort_order, icon) VALUES
+  ('家賃',   1, '🏠'),
+  ('光熱費', 2, '💡'),
+  ('水道代', 3, '🚿'),
+  ('食費',   4, '🍽️'),
+  ('交際費', 5, '🎉'),
+  ('貯金',   6, '💴');
 
 -- 支出（立替を含む）
 -- advance_status:

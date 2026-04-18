@@ -25,6 +25,7 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false)
   const [copying, setCopying] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
+  const [newCategoryIcon, setNewCategoryIcon] = useState('📦')
   const [addingCategory, setAddingCategory] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Category | null>(null)
 
@@ -79,11 +80,17 @@ export default function SettingsPage() {
     setAddingCategory(true)
     const maxOrder = categories.reduce((m, c) => Math.max(m, c.sort_order), 0)
     const { data } = await supabase
-      .from('categories').insert({ name: newCategoryName.trim(), sort_order: maxOrder + 1 })
+      .from('categories').insert({ name: newCategoryName.trim(), icon: newCategoryIcon, sort_order: maxOrder + 1 })
       .select().single()
     if (data) setCategories((prev) => [...prev, data])
     setNewCategoryName('')
+    setNewCategoryIcon('📦')
     setAddingCategory(false)
+  }
+
+  const handleIconUpdate = async (catId: string, icon: string) => {
+    await supabase.from('categories').update({ icon }).eq('id', catId)
+    setCategories((prev) => prev.map((c) => c.id === catId ? { ...c, icon } : c))
   }
 
   const handleDeleteCategory = async () => {
@@ -124,7 +131,7 @@ export default function SettingsPage() {
           {categories.map((cat) => (
             <div key={cat.id} className="flex items-center justify-between gap-3">
               <span className="text-sm w-16 shrink-0" style={{ color: isKawaii ? '#880e4f' : '#374151' }}>
-                {cat.name}
+                {cat.icon && <span className="mr-1">{cat.icon}</span>}{cat.name}
               </span>
               <div className="relative flex-1">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: isKawaii ? '#f48fb1' : '#9ca3af' }}>¥</span>
@@ -164,11 +171,19 @@ export default function SettingsPage() {
         </h2>
         <div className="flex flex-col gap-2 mb-3">
           {categories.map((cat) => (
-            <div key={cat.id} className="flex items-center justify-between px-3 py-2 rounded-xl"
+            <div key={cat.id} className="flex items-center gap-2 px-3 py-2 rounded-xl"
               style={{ background: isKawaii ? '#fff0f6' : '#f9fafb', border: isKawaii ? '1px solid #fce4ec' : 'none' }}>
-              <span className="text-sm" style={{ color: isKawaii ? '#880e4f' : '#374151' }}>{cat.name}</span>
+              <input
+                type="text"
+                defaultValue={cat.icon ?? '📦'}
+                onBlur={(e) => { if (e.target.value !== cat.icon) handleIconUpdate(cat.id, e.target.value) }}
+                className="w-9 text-center text-lg bg-transparent border rounded-lg focus:outline-none shrink-0"
+                style={{ borderColor: isKawaii ? '#f8bbd0' : '#e5e7eb' }}
+                maxLength={2}
+              />
+              <span className="text-sm flex-1" style={{ color: isKawaii ? '#880e4f' : '#374151' }}>{cat.name}</span>
               <button onClick={() => setDeleteTarget(cat)}
-                className="text-lg leading-none transition-colors"
+                className="text-lg leading-none transition-colors shrink-0"
                 style={{ color: isKawaii ? '#f8bbd0' : '#d1d5db' }}>
                 ×
               </button>
@@ -176,6 +191,14 @@ export default function SettingsPage() {
           ))}
         </div>
         <div className="flex gap-2">
+          <input
+            type="text"
+            value={newCategoryIcon}
+            onChange={(e) => setNewCategoryIcon(e.target.value)}
+            className="w-12 text-center text-lg border rounded-xl focus:outline-none bg-white shrink-0"
+            style={{ borderColor: isKawaii ? '#fce4ec' : '#e5e7eb' }}
+            maxLength={2}
+          />
           <input type="text" value={newCategoryName}
             onChange={(e) => setNewCategoryName(e.target.value)}
             placeholder="新しいカテゴリ名"
@@ -184,7 +207,7 @@ export default function SettingsPage() {
           />
           <button onClick={handleAddCategory}
             disabled={addingCategory || !newCategoryName.trim()}
-            className="text-white px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50"
+            className="text-white px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50 shrink-0"
             style={isKawaii
               ? { background: 'linear-gradient(135deg, #f06292, #e91e63)' }
               : { background: '#2563eb' }}>
