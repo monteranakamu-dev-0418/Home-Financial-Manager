@@ -128,3 +128,66 @@
     @apply font-sans;
   }
 }
+
+/* ===== きゅるるんモード ===== */
+html.kawaii {
+  --background: oklch(0.98 0.015 350);
+  --foreground: oklch(0.25 0.05 320);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.25 0.05 320);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.25 0.05 320);
+  --primary: oklch(0.62 0.19 320);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.93 0.04 300);
+  --secondary-foreground: oklch(0.35 0.12 300);
+  --muted: oklch(0.95 0.02 340);
+  --muted-foreground: oklch(0.55 0.06 320);
+  --accent: oklch(0.88 0.08 160);
+  --accent-foreground: oklch(0.25 0.08 160);
+  --destructive: oklch(0.60 0.20 25);
+  --border: oklch(0.90 0.04 320);
+  --input: oklch(0.92 0.03 320);
+  --ring: oklch(0.62 0.19 320);
+  --radius: 1rem;
+}
+
+html.kawaii body {
+  background: linear-gradient(135deg, oklch(0.97 0.025 340) 0%, oklch(0.96 0.02 280) 50%, oklch(0.97 0.02 170) 100%);
+  font-family: var(--font-zen-maru), var(--font-geist-sans), sans-serif;
+}
+
+html.kawaii .kawaii-card {
+  background: linear-gradient(135deg, oklch(1 0.01 350) 0%, oklch(0.98 0.02 300) 100%);
+  border: 2px solid oklch(0.90 0.06 320);
+  box-shadow: 0 4px 20px oklch(0.75 0.10 320 / 0.15), 0 1px 4px oklch(0.75 0.10 320 / 0.10);
+}
+
+html.kawaii .kawaii-balance-positive {
+  background: linear-gradient(135deg, oklch(0.72 0.17 160) 0%, oklch(0.65 0.18 200) 100%);
+}
+
+html.kawaii .kawaii-balance-negative {
+  background: linear-gradient(135deg, oklch(0.72 0.18 25) 0%, oklch(0.65 0.20 350) 100%);
+}
+
+html.kawaii .kawaii-btn-primary {
+  background: linear-gradient(135deg, oklch(0.72 0.20 330) 0%, oklch(0.62 0.22 290) 100%);
+  border: none;
+  color: white;
+  box-shadow: 0 4px 15px oklch(0.62 0.22 310 / 0.35);
+}
+
+html.kawaii .kawaii-btn-primary:active {
+  transform: scale(0.95);
+  box-shadow: 0 2px 8px oklch(0.62 0.22 310 / 0.30);
+}
+
+html.kawaii .kawaii-progress-bar {
+  background: linear-gradient(90deg, oklch(0.72 0.17 330) 0%, oklch(0.68 0.18 290) 100%);
+}
+
+html.kawaii .kawaii-bottom-nav {
+  background: linear-gradient(180deg, oklch(1 0.01 350) 0%, oklch(0.98 0.02 310) 100%);
+  border-top: 2px solid oklch(0.90 0.06 320);
+}

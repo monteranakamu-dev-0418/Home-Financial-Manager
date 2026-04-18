@@ -1,11 +1,18 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Geist, Zen_Maru_Gothic } from "next/font/google";
 import "./globals.css";
 import { UserProvider } from "@/contexts/user-context";
+import { ModeProvider } from "@/contexts/mode-context";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+});
+
+const zenMaruGothic = Zen_Maru_Gothic({
+  variable: "--font-zen-maru",
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
 });
 
 export const metadata: Metadata = {
@@ -25,9 +32,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja" className={`${geistSans.variable} h-full antialiased`}>
+    <html lang="ja" className={`${geistSans.variable} ${zenMaruGothic.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-gray-50">
-        <UserProvider>{children}</UserProvider>
+        <ModeProvider>
+          <UserProvider>{children}</UserProvider>
+        </ModeProvider>
       </body>
     </html>
   );
