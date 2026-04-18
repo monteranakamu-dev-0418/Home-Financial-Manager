@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import confetti from 'canvas-confetti'
 import { supabase } from '@/lib/supabase'
 import { useMode } from '@/contexts/mode-context'
 import type { Expense } from '@/types'
@@ -54,12 +53,15 @@ export default function AdvancesPage() {
       .eq('id', settleTarget.id)
     setSettleTarget(null)
     if (isKawaii) {
-      setTimeout(() => confetti({
-        particleCount: 120,
-        spread: 90,
-        origin: { y: 0.6 },
-        colors: ['#f48fb1', '#ce93d8', '#80cbc4', '#fff176', '#f06292'],
-      }), 50)
+      setTimeout(async () => {
+        const { default: confetti } = await import('canvas-confetti')
+        confetti({
+          particleCount: 120,
+          spread: 90,
+          origin: { y: 0.6 },
+          colors: ['#f48fb1', '#ce93d8', '#80cbc4', '#fff176', '#f06292'],
+        })
+      }, 50)
     }
     await loadUnsettled()
   }
