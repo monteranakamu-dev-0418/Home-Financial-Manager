@@ -130,10 +130,10 @@ export default function SettingsPage() {
         <div className="flex flex-col gap-3 mb-4">
           {categories.map((cat) => (
             <div key={cat.id} className="flex items-center justify-between gap-3">
-              <span className="text-sm w-16 shrink-0" style={{ color: isKawaii ? '#880e4f' : '#374151' }}>
+              <span className="text-sm w-24 shrink-0 whitespace-nowrap" style={{ color: isKawaii ? '#880e4f' : '#374151' }}>
                 {cat.icon && <span className="mr-1">{cat.icon}</span>}{cat.name}
               </span>
-              <div className="relative flex-1">
+              <div className="relative flex-1 min-w-0">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: isKawaii ? '#f48fb1' : '#9ca3af' }}>¥</span>
                 <input
                   type="number" inputMode="numeric" step={1000} min={0}
@@ -201,13 +201,13 @@ export default function SettingsPage() {
           />
           <input type="text" value={newCategoryName}
             onChange={(e) => setNewCategoryName(e.target.value)}
-            placeholder="新しいカテゴリ名"
-            className="flex-1 px-3 py-2 border rounded-xl text-sm focus:outline-none bg-white"
+            placeholder="カテゴリ名"
+            className="flex-1 min-w-0 px-3 py-2 border rounded-xl text-sm focus:outline-none bg-white"
             style={{ borderColor: isKawaii ? '#fce4ec' : '#e5e7eb' }}
           />
           <button onClick={handleAddCategory}
             disabled={addingCategory || !newCategoryName.trim()}
-            className="text-white px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50 shrink-0"
+            className="text-white px-3 py-2 rounded-xl text-sm font-medium disabled:opacity-50 shrink-0"
             style={isKawaii
               ? { background: 'linear-gradient(135deg, #f06292, #e91e63)' }
               : { background: '#2563eb' }}>
