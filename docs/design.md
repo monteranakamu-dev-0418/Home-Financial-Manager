@@ -1,7 +1,7 @@
 # 設計書 — 家計管理アプリ
 
-**バージョン：** 0.1
-**作成日：** 2026-04-18
+**バージョン：** 1.0
+**最終更新：** 2026-04-19
 
 ---
 
@@ -9,201 +9,174 @@
 
 | 役割 | ツール | バージョン |
 |------|--------|---------|
-| フレームワーク | Next.js (App Router) | 15.x |
-| UI | Tailwind CSS + shadcn/ui | - |
-| グラフ | Recharts | 2.x |
+| フレームワーク | Next.js (App Router) | 16.x |
+| スタイリング | Tailwind CSS | v4 |
+| グラフ | Recharts | 3.x |
 | DB・バックエンド | Supabase (PostgreSQL) | - |
 | ホスティング | Vercel | - |
 | 言語 | TypeScript | 5.x |
 
+Route Handler（API エンドポイント）は使用していません。
+すべてのデータ操作はクライアントから Supabase JS クライアントを直接呼び出します。
+
 ---
 
-## 2. 詳細データモデル
+## 2. データモデル
+
+### expenses テーブル（支出・立替を統合）
 
 ```sql
--- ユーザー
-users (
-  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  name        text NOT NULL,          -- '中村' | '寺本'
-  created_at  timestamptz DEFAULT now()
-)
-
--- カテゴリ（追加可能）
-categories (
-  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  name        text NOT NULL,          -- '食費' など
-  sort_order  int  NOT NULL DEFAULT 0,
-  created_at  timestamptz DEFAULT now()
-)
-
--- 支出
 expenses (
-  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id        uuid REFERENCES users(id),
+  id             uuid PRIMARY KEY,
+  user_id        uuid REFERENCES users(id),      -- 支払者
   category_id    uuid REFERENCES categories(id),
-  amount         int  NOT NULL,              -- 円（整数）
-  payment_method text NOT NULL,             -- '現金'|'PayPay'|'カード'
-  place          text,                       -- 場所（予測補完用）
+  amount         int  NOT NULL,                  -- 円（整数）
+  payment_method text NOT NULL,                  -- '現金'|'PayPay'|'カード'
+  place          text,                           -- 場所（予測補完用）
   date           date NOT NULL,
-  note           text,                       -- 任意メモ
+  note           text,                           -- メモ・立替の場合は内容
+  advance_status text,                           -- NULL|'unsettled'|'settled'
+  settled_at     timestamptz,                    -- 精算日時
   created_at     timestamptz DEFAULT now()
-)
-
--- 月次拠出（毎月25日の15万）
-contributions (
-  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     uuid REFERENCES users(id),
-  amount      int  NOT NULL DEFAULT 150000,
-  month       text NOT NULL,                -- 'YYYY-MM'
-  created_at  timestamptz DEFAULT now(),
-  UNIQUE(user_id, month)
-)
-
--- 月次予算
-budgets (
-  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  category_id uuid REFERENCES categories(id),
-  amount      int  NOT NULL,
-  month       text NOT NULL,                -- 'YYYY-MM'
-  created_at  timestamptz DEFAULT now(),
-  UNIQUE(category_id, month)
-)
-
--- 立替
-advances (
-  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  payer_id     uuid REFERENCES users(id),   -- 立替た人
-  amount       int  NOT NULL,
-  description  text NOT NULL,               -- 内容
-  date         date NOT NULL,
-  settled      bool NOT NULL DEFAULT false,
-  settled_at   timestamptz,
-  created_at   timestamptz DEFAULT now()
 )
 ```
 
-### 補足
+**advance_status の意味：**
 
-- 金額はすべて**円の整数**で統一（小数なし）
-- `place` は別テーブルにせず `expenses.place` の DISTINCT で予測候補を生成
-- `month` は `'YYYY-MM'` 文字列（例：`'2026-04'`）で統一
+| 値 | 意味 |
+|----|------|
+| `NULL` | 通常の支出 |
+| `'unsettled'` | 未精算の立替 |
+| `'settled'` | 精算済の立替 |
+
+立替の精算は `advance_status` を `'unsettled'` → `'settled'` に UPDATE するだけです。
+新しいレコードは作成しません（二重登録なし）。
+
+### その他のテーブル
+
+```sql
+users (id, name, created_at)
+categories (id, name, sort_order, created_at)
+budgets (id, category_id, amount, month, created_at)
+contributions (id, user_id, amount, month, created_at)  -- 将来拡張用・現在未使用
+```
 
 ---
 
-## 3. 画面フロー
+## 3. 画面構成
 
 ```
 起動
  └─ ユーザー選択画面（中村 / 寺本）
-       └─ ホーム画面
-             ├─ [支出入力] ボタン → 支出入力フォーム → 完了 → ホーム
-             ├─ [立替入力] ボタン → 立替入力フォーム → 完了 → ホーム
-             ├─ [一覧] タブ
-             │     └─ 支出一覧（フィルタ：月・カテゴリ・支払方法）
-             ├─ [集計] タブ
-             │     ├─ 今月残高・立替残高
-             │     ├─ カテゴリ別 予算 vs 実績
-             │     ├─ 月平均（全体・カテゴリ別）
-             │     └─ 立替一覧 → 精算ボタン
-             ├─ [グラフ] タブ
-             │     ├─ 月別推移（折れ線）
-             │     └─ カテゴリ内訳（円グラフ）
-             └─ [設定] タブ
-                   ├─ カテゴリ管理（追加・並び替え）
-                   ├─ 予算設定
-                   └─ ユーザー切替
-```
+       └─ ホーム (/home)
+             ├─ 今月残高カード（マイナス時は赤表示）
+             ├─ 先月までの資産合計
+             ├─ 未精算立替アラート
+             ├─ [支出入力] [立替入力] ボタン
+             └─ カテゴリ別予算進捗バー
 
-### ホーム画面レイアウト（参考）
-
-```
-┌─────────────────────────────┐
-│ こんにちは、中村さん    4月  │
-├─────────────────────────────┤
-│ 今月残高         ¥ 212,300  │
-│ 支出合計         ¥  87,700  │
-├─────────────────────────────┤
-│ ⚠ 立替あり  寺本 → 中村 ¥2,500 │
-├─────────────────────────────┤
-│ カテゴリ別進捗               │
-│ 食費    ████░░  ¥32,000/¥50,000 │
-│ 交際費  ██████  ¥18,000/¥15,000 ⚠超過 │
-├─────────────────────────────┤
-│ [+ 支出を入力]  [立替を入力] │
-└─────────────────────────────┘
+ボトムナビ
+ ├─ ホーム    /home
+ ├─ 一覧     /expenses        （通常支出＋精算済立替）
+ ├─ 立替     /advances        （未精算タブ / 精算済タブ）
+ ├─ 集計     /summary
+ ├─ グラフ   /graph
+ └─ 設定     /settings
 ```
 
 ---
 
-## 4. API設計（Next.js Route Handlers）
+## 4. 主要ロジック
 
-Supabase クライアントを直接呼ぶため REST API は最小限。集計系のみ Route Handler で実装。
+### 残高計算（ホーム・集計）
 
 ```
-# 支出
-GET    /api/expenses?month=YYYY-MM&category=&payment=
-POST   /api/expenses
-DELETE /api/expenses/:id
+今月の残高 = 今月の予算合計
+           - 今月の通常支出（advance_status IS NULL）
+           - 今月の精算済立替（advance_status = 'settled'）
+           - 今月の未精算立替（advance_status = 'unsettled'）
+```
 
-# 場所の予測候補（過去の入力から取得）
-GET    /api/places?q=検索文字列
+### 先月までの資産合計（キャリーオーバー）
 
-# 集計
-GET    /api/summary?month=YYYY-MM
-  → { total, balance, byCategory: [{id, name, budget, actual, avg}], overallAvg }
+```
+先月以前の資産合計 = Σ(過去の月次予算) - Σ(過去の全支出・立替)
+```
 
-# 立替
-GET    /api/advances?settled=false
-POST   /api/advances
-PATCH  /api/advances/:id/settle
+expenses テーブルの単一クエリで完結します（advance_status を問わず全件）。
 
-# 予算
-GET    /api/budgets?month=YYYY-MM
-POST   /api/budgets          -- upsert
+### 支出一覧のフィルタ
 
-# 拠出
-GET    /api/contributions?month=YYYY-MM
-POST   /api/contributions
+| 画面 | 表示対象 |
+|------|---------|
+| 支出一覧 `/expenses` | `advance_status IS NULL` または `'settled'` |
+| 立替一覧 `/advances` 未精算タブ | `advance_status = 'unsettled'` |
+| 立替一覧 `/advances` 精算済タブ | `advance_status = 'settled'`（直近50件）|
+| グラフ `/graph` | 全件（advance_status 問わず） |
+
+---
+
+## 5. ファイル構成
+
+```
+src/
+├── app/
+│   ├── layout.tsx              ルートレイアウト（PWA メタタグ・フォント）
+│   ├── page.tsx                ユーザー選択画面
+│   ├── icon.tsx                ファビコン生成（🏦 32×32）
+│   ├── apple-icon.tsx          Apple タッチアイコン生成（🏦 180×180）
+│   ├── globals.css
+│   └── (app)/                  認証済みレイアウトグループ
+│       ├── layout.tsx          ボトムナビ・未ログイン時リダイレクト
+│       ├── home/page.tsx
+│       ├── expenses/
+│       │   ├── page.tsx        支出一覧
+│       │   ├── new/page.tsx    支出入力
+│       │   └── [id]/page.tsx   支出編集・削除
+│       ├── advances/
+│       │   ├── page.tsx        立替一覧（タブ切替）
+│       │   ├── new/page.tsx    立替入力
+│       │   └── [id]/page.tsx   立替編集・削除
+│       ├── summary/page.tsx    集計
+│       ├── graph/page.tsx      グラフ
+│       └── settings/page.tsx  設定
+├── components/
+│   ├── bottom-nav.tsx
+│   ├── budget-bar.tsx
+│   ├── amount-input.tsx
+│   └── ui/                     shadcn/ui コンポーネント
+├── contexts/
+│   └── user-context.tsx        ログインユーザー（localStorage 永続化）
+├── lib/
+│   ├── supabase.ts
+│   └── utils.ts
+└── types/
+    └── index.ts                User / Category / Expense / Budget 型定義
 ```
 
 ---
 
-## 5. 実装フェーズ
+## 6. PWA 対応
 
-| フェーズ | 内容 |
-|---------|------|
-| Phase 1 | 環境構築・Supabase DB作成・ユーザー選択画面 |
-| Phase 2 | 支出入力フォーム・一覧表示 |
-| Phase 3 | 集計・残高・月平均 |
-| Phase 4 | 予算設定・予算 vs 実績表示 |
-| Phase 5 | 立替機能 |
-| Phase 6 | グラフ可視化 |
-| Phase 7 | 場所予測補完・細かいUX改善 |
+- `public/manifest.json` — `display: "standalone"` で Safari のブラウザ UI を非表示
+- `apple-mobile-web-app-capable: yes` — iOS ホーム画面追加時にアプリ風動作
+- iOS 16.4+ で最適動作。14 系は一部挙動の差異あり（OS レベルの制限）
 
 ---
 
-## 6. 開発環境セットアップ手順
+## 7. 開発・デプロイ手順
 
 ```bash
-# 1. Node.js インストール（未インストールの場合）
-#    https://nodejs.org から LTS版をダウンロード
+# ローカル起動
+npm install
+npm run dev
 
-# 2. プロジェクト作成
-npx create-next-app@latest home-financial-manager \
-  --typescript --tailwind --app --src-dir
+# ビルド確認
+npm run build
 
-cd home-financial-manager
-
-# 3. 依存パッケージ追加
-npm install @supabase/supabase-js recharts
-npx shadcn@latest init
-
-# 4. 環境変数設定（Supabase管理画面から取得）
-# .env.local
-NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=xxxx
-
-# 5. Vercel デプロイ
-#    https://vercel.com でGitHubと連携 → リポジトリをインポート
-#    環境変数を Vercel 管理画面に同じ内容で設定
+# Vercel デプロイ
+# → main ブランチ push で自動デプロイ
+# → 環境変数は Vercel 管理画面で設定
+#   NEXT_PUBLIC_SUPABASE_URL
+#   NEXT_PUBLIC_SUPABASE_ANON_KEY
 ```

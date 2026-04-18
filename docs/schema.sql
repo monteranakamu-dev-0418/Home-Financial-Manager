@@ -23,7 +23,11 @@ INSERT INTO categories (name, sort_order) VALUES
   ('交際費', 5),
   ('貯金',   6);
 
--- 支出
+-- 支出（立替を含む）
+-- advance_status:
+--   NULL        = 通常の支出
+--   'unsettled' = 未精算の立替
+--   'settled'   = 精算済の立替
 CREATE TABLE expenses (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id        uuid NOT NULL REFERENCES users(id),
@@ -33,10 +37,12 @@ CREATE TABLE expenses (
   place          text,
   date           date NOT NULL,
   note           text,
+  advance_status text CHECK (advance_status IN ('unsettled', 'settled')),
+  settled_at     timestamptz,
   created_at     timestamptz DEFAULT now()
 );
 
--- 月次拠出
+-- 月次拠出（未使用・将来拡張用）
 CREATE TABLE contributions (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id    uuid NOT NULL REFERENCES users(id),
@@ -54,16 +60,4 @@ CREATE TABLE budgets (
   month       text NOT NULL,
   created_at  timestamptz DEFAULT now(),
   UNIQUE(category_id, month)
-);
-
--- 立替
-CREATE TABLE advances (
-  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  payer_id    uuid NOT NULL REFERENCES users(id),
-  amount      int  NOT NULL CHECK (amount > 0),
-  description text NOT NULL,
-  date        date NOT NULL,
-  settled     bool NOT NULL DEFAULT false,
-  settled_at  timestamptz,
-  created_at  timestamptz DEFAULT now()
 );
