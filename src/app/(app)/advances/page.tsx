@@ -52,7 +52,6 @@ export default function AdvancesPage() {
     await supabase.from('expenses')
       .update({ advance_status: 'settled', settled_at: new Date().toISOString() })
       .eq('id', settleTarget.id)
-    setSettleTarget(null)
     if (isKawaii) {
       confetti({
         particleCount: 100,
@@ -60,8 +59,9 @@ export default function AdvancesPage() {
         origin: { y: 0.5 },
         colors: ['#f48fb1', '#ce93d8', '#80cbc4', '#fff176', '#f06292'],
       })
-      await new Promise((r) => setTimeout(r, 600))
+      await new Promise((r) => setTimeout(r, 800))
     }
+    setSettleTarget(null)
     await loadUnsettled()
   }
 
