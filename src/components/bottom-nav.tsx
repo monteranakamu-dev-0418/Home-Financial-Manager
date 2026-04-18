@@ -2,15 +2,16 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { Home, List, ArrowLeftRight, Wallet, TrendingUp, Settings, Sparkles, PiggyBank } from 'lucide-react'
 import { useMode } from '@/contexts/mode-context'
 
 const NAV_ITEMS = [
-  { href: '/home', label: 'ホーム', icon: '🏠', kawaiiIcon: '🏠' },
-  { href: '/expenses', label: '一覧', icon: '📋', kawaiiIcon: '📋' },
-  { href: '/advances', label: '立替', icon: '🔄', kawaiiIcon: '💸' },
-  { href: '/summary', label: '集計', icon: '💰', kawaiiIcon: '💰' },
-  { href: '/graph', label: 'グラフ', icon: '📊', kawaiiIcon: '📊' },
-  { href: '/settings', label: '設定', icon: '⚙️', kawaiiIcon: '✨' },
+  { href: '/home',     label: 'ホーム', Icon: Home,             KawaiiIcon: Home },
+  { href: '/expenses', label: '一覧',   Icon: List,             KawaiiIcon: List },
+  { href: '/advances', label: '立替',   Icon: ArrowLeftRight,   KawaiiIcon: ArrowLeftRight },
+  { href: '/summary',  label: '集計',   Icon: Wallet,           KawaiiIcon: PiggyBank },
+  { href: '/graph',    label: 'グラフ', Icon: TrendingUp,       KawaiiIcon: TrendingUp },
+  { href: '/settings', label: '設定',   Icon: Settings,         KawaiiIcon: Sparkles },
 ]
 
 export function BottomNav() {
@@ -34,19 +35,27 @@ export function BottomNav() {
           const active = pathname.startsWith(item.href)
           const activeColor = isKawaii ? '#c2185b' : '#2563eb'
           const inactiveColor = isKawaii ? '#f48fb1' : '#9ca3af'
+          const IconComponent = isKawaii ? item.KawaiiIcon : item.Icon
 
           return (
             <Link
               key={item.href}
               href={item.href}
-              className="flex flex-col items-center gap-0.5 flex-1 py-2 transition-colors"
+              className="flex flex-col items-center gap-0.5 flex-1 py-2 relative transition-all"
               style={{ color: active ? activeColor : inactiveColor }}
             >
-              <span className={`text-lg ${active && isKawaii ? 'drop-shadow-sm' : ''}`}>
-                {isKawaii ? item.kawaiiIcon : item.icon}
+              <span
+                className="flex items-center justify-center w-8 h-8 rounded-full transition-all"
+                style={active && isKawaii
+                  ? { background: 'linear-gradient(135deg, #fce4ec, #f8bbd0)', transform: 'scale(1.15)' }
+                  : active
+                  ? { background: '#eff6ff' }
+                  : {}}
+              >
+                <IconComponent size={isKawaii ? 18 : 20} strokeWidth={active ? 2.5 : 1.8} />
               </span>
               <span
-                className="text-[10px]"
+                className="text-[10px] leading-none"
                 style={{
                   fontWeight: active ? 700 : 400,
                   fontFamily: isKawaii ? 'var(--font-zen-maru), sans-serif' : undefined,
@@ -54,11 +63,10 @@ export function BottomNav() {
               >
                 {item.label}
               </span>
-              {/* アクティブインジケーター */}
-              {active && isKawaii && (
+              {active && (
                 <span
-                  className="absolute bottom-1 w-1 h-1 rounded-full"
-                  style={{ background: '#f06292' }}
+                  className="absolute bottom-0.5 w-4 h-0.5 rounded-full"
+                  style={{ background: isKawaii ? '#f06292' : '#2563eb' }}
                 />
               )}
             </Link>
